@@ -1,47 +1,32 @@
 pipeline {
     agent any
     tools {
-        maven 'Maven363'
-    }
-    options {
-        timeout(10)
-        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
-    }
+        maven "Maven_Home"
+        }
     stages {
-        stage('Build') {
-            steps {
-                sh "mvn clean install"
+        stage('Checkout') {                       
+            steps{
+            git credentialsId: 'git_Credentials', url: 'https://github.com/Shubham4676/war-web-project.git'
+                echo 'Checkout Success'
             }
         }
-        stage('upload artifact to nexus') {
-            steps {
-                nexusArtifactUploader artifacts: [
-                    [
-                        artifactId: 'wwp', 
-                        classifier: '', 
-                        file: 'target/wwp-1.0.0.war', 
-                        type: 'war'
-                    ]
-                ], 
-                    credentialsId: 'nexus3', 
-                    groupId: 'koddas.web.war', 
-                    nexusUrl: '10.0.0.91:8081', 
-                    nexusVersion: 'nexus3', 
-                    protocol: 'http', 
-                    repository: 'samplerepo', 
-                    version: '1.0.0'
+        
+        stage('MavenBuild') {
+            steps{
+            sh 'mvn clean install'
+                echo 'Build Success'
             }
         }
-    }
-    post {
-        always{
-            deleteDir()
-        }
-        failure {
-            echo "sendmail -s mvn build failed receipients@my.com"
-        }
-        success {
-            echo "The job is successful"
+        
+        stage('Deploy') {
+            steps{
+        sshagent(['deploy_user']) {
+        
+        sh "scp -o StrictHostKeyChecking=no /var/lib/jenkins/workspace/CICDJOB-2/target/wwp-1.0.0.war  ec2-user@52.53.195.59:/opt/apache-tomcat-9.0.84/webapps"
+                echo 'Deploying Success'  
+            }
+                
+            }
         }
     }
 }
